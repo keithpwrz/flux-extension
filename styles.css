@@ -1,0 +1,404 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   FLUX — RoRegion-matched UI
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:        #090b10;
+  --bg2:       #0d1018;
+  --card:      #11131a;
+  --card-srv:  rgb(45, 48, 53);   /* lighter — cards pop against panel */
+  --glass:     rgba(9,11,16,0.96);
+  --bdr:       rgba(255,255,255,0.05);
+  --bdr2:      rgba(255,255,255,0.08);
+  --txt:       #e0e0e0;
+  --dim:       #64748b;
+  --muted:     #3b4252;
+  --grn:       #10b981;
+  --grn-soft:  rgba(16,185,129,0.10);
+  --grn-glow:  rgba(16,185,129,0.14);
+  --blue:      #335fff;
+  --blue-soft: rgba(51,95,255,0.12);
+  --warn:      #f59e0b;
+  --red:       #ef4444;
+  --r:         6px;
+  --rl:        8px;
+  --rx:        16px;
+  --f:         Inter, system-ui, -apple-system, sans-serif;
+}
+
+/* ── Toggle — RoRegion-style split play button ───────────────────────── */
+
+/* Hide Roblox's random server button (RoRegion pattern) */
+.random-server-button,
+#rrp-btn-wrapper,
+#rrp-our-play-btn {
+  display: none !important; visibility: hidden !important; opacity: 0 !important;
+  width: 0 !important; height: 0 !important; overflow: hidden !important;
+  min-width: 0 !important; margin: 0 !important; padding: 0 !important;
+}
+
+/* Flux wrapper — injected by content.js around Roblox Play + our globe */
+#flux-btn-wrapper {
+  display: inline-flex !important; align-items: stretch !important;
+  gap: 6px !important; vertical-align: middle !important;
+}
+
+/* Flux play button (RoRegion-style: green, matches Roblox play icon) */
+#flux-our-play-btn {
+  background-color: #10b981 !important;
+  border: none !important; cursor: pointer !important;
+  display: inline-flex !important; align-items: center !important;
+  justify-content: center !important;
+  color: white !important; flex-shrink: 0 !important;
+  box-shadow: none !important; transition: filter 0.15s ease !important;
+}
+#flux-our-play-btn:hover { filter: brightness(1.12) !important; }
+#flux-our-play-btn:active { filter: brightness(0.88) !important; }
+
+/* ── Overlay ─────────────────────────────────────────────────────────── */
+
+.flux-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  z-index: 999999; display: flex; align-items: center; justify-content: center;
+  font-family: var(--f); animation: f-bg-in .25s ease forwards;
+}
+@keyframes f-bg-in { from { background: transparent; } to { background: rgba(0,0,0,.65); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); } }
+.flux-overlay-out { animation: f-bg-out .2s ease forwards; pointer-events: none; }
+@keyframes f-bg-out { from { background: rgba(0,0,0,.65); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); } to { background: transparent; } }
+
+/* ── Modal — compact rectangle (RoRegion dimensions) ─────────────────── */
+
+.flux-modal {
+  width: 92%; max-width: 1100px; height: 78vh; max-height: 780px;
+  background: rgb(20,21,25);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--rx);
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07);
+}
+.flux-modal-in { animation: f-modal-in .28s cubic-bezier(.16,1,.3,1) forwards; }
+@keyframes f-modal-in { from { opacity: 0; transform: scale(.96) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+
+.flux-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 22px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: rgba(0,0,0,.18); flex-shrink: 0;
+}
+.flux-head h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--grn); letter-spacing: .04em; }
+.flux-x { background: none; border: none; color: var(--dim); font-size: 20px; cursor: pointer; padding: 0 2px; line-height: 1; transition: color .15s; }
+.flux-x:hover { color: var(--txt); }
+
+/* ── Body ────────────────────────────────────────────────────────────── */
+
+.flux-body { flex: 1; overflow: hidden; min-height: 0; }
+.flux-dash { display: flex; flex: 1; min-height: 0; height: 100%; overflow: hidden; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LEFT SIDEBAR — scrollable region list (RoRegion proportions)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.flux-dash-left {
+  width: 36%; min-width: 300px; max-width: 420px; flex-shrink: 0;
+  border-right: 1px solid rgba(255,255,255,0.07);
+  background: rgb(14,15,18);
+  display: flex; flex-direction: column;
+  min-height: 0; height: 100%; overflow: hidden;
+}
+
+.flux-sidebar-header {
+  padding: 18px 16px 12px; font-size: 16px; font-weight: 700;
+  color: #e8e8e8; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.07);
+  height: 63px; box-sizing: border-box; display: flex; align-items: center;
+}
+
+.flux-side {
+  flex: 1; overflow-y: scroll !important; overflow-x: hidden; padding: 4px 0;
+}
+.flux-side::-webkit-scrollbar { width: 6px !important; }
+.flux-side::-webkit-scrollbar-track { background: transparent !important; }
+.flux-side::-webkit-scrollbar-thumb { background: rgba(180,180,180,0.45) !important; border-radius: 10px !important; }
+.flux-side::-webkit-scrollbar-thumb:hover { background: rgba(200,200,200,0.65) !important; }
+
+/* ── Region group ────────────────────────────────────────────────────── */
+
+.flux-region-group { margin-bottom: 2px; }
+
+.flux-region-group-label {
+  padding: 8px 12px 4px; font-size: 12px; font-weight: 600;
+  color: #eeeeee; text-transform: uppercase; letter-spacing: 0.5px;
+  background: rgba(255,255,255,0.03); margin-top: 8px;
+}
+.flux-region-group:first-child .flux-region-group-label { margin-top: 0; }
+
+/* ── Location row ────────────────────────────────────────────────────── */
+
+.flux-loc-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; cursor: pointer;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  transition: background .15s; gap: 6px;
+}
+.flux-loc-row:hover { background: rgba(255,255,255,0.08); }
+.flux-loc-row.selected { background: rgba(16,185,129,0.15); }
+
+.flux-loc-flag {
+  width: 20px; height: 15px; object-fit: cover; border-radius: 2px;
+  flex-shrink: 0; vertical-align: middle;
+}
+
+.flux-loc-name {
+  flex: 1; font-size: 14px; font-weight: 500; color: #e0e0e0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.flux-loc-pill {
+  font-size: 12px; font-weight: 400; color: #a0a0a0;
+  background: rgba(255,255,255,0.05); padding: 0 8px; border-radius: 4px;
+  height: 26px; display: inline-flex; align-items: center; white-space: nowrap;
+}
+.flux-loc-row.selected .flux-loc-pill {
+  background: rgba(16,185,129,0.12); color: rgba(52,211,153,0.85);
+}
+
+.flux-loc-action {
+  width: 48px; height: 26px; border-radius: 6px; border: none; cursor: pointer;
+  background: #10b981; color: white; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .15s; padding: 0;
+}
+.flux-loc-action:hover { background: #059669; }
+.flux-loc-action svg { width: 10px; height: 10px; fill: currentColor; }
+
+/* ── Sidebar footer ──────────────────────────────────────────────────── */
+
+.flux-loader {
+  padding: 10px 16px; font-size: 13px; font-style: italic;
+  color: #888; border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RIGHT PANEL
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.flux-dash-right {
+  flex: 1; display: flex; flex-direction: column;
+  min-height: 0; height: 100%; overflow: hidden;
+  background: rgb(20,21,25);
+}
+
+.flux-main-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px 12px; flex-shrink: 0; gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.flux-main-title {
+  font-size: 16px; font-weight: 700; color: #e8e8e8;
+  display: flex; align-items: center; gap: 8px;
+}
+.flux-main-title img { width: 22px; height: 16px; object-fit: cover; border-radius: 2px; }
+
+.flux-close-pill {
+  padding: 7px 18px; border-radius: 20px; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: var(--f);
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  color: #ccc; transition: background .15s; flex-shrink: 0;
+}
+.flux-close-pill:hover { background: rgba(255,255,255,0.14); }
+
+.flux-back-btn {
+  padding: 7px 18px; border-radius: 20px; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: var(--f);
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  color: #ccc; transition: background .15s; flex-shrink: 0;
+}
+.flux-back-btn:hover { background: rgba(255,255,255,0.14); }
+
+/* ── Default dashboard panel ─────────────────────────────────────────── */
+
+.flux-default-panel {
+  flex: 1; overflow-y: auto; padding: 24px;
+  display: flex; flex-direction: column; gap: 24px;
+}
+
+.flux-section-label {
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: #888; margin-bottom: 4px;
+}
+
+.flux-promo-card {
+  background: rgb(14,15,18); border-radius: 12px;
+  padding: 20px 24px; display: flex; flex-direction: column; gap: 16px;
+}
+
+.flux-promo-left { flex: 1; min-width: 0; }
+.flux-promo-title { font-size: 14px; font-weight: 600; color: var(--txt); margin-bottom: 4px; }
+.flux-promo-desc { font-size: 12px; color: var(--dim); line-height: 1.5; opacity: 0.7; }
+.flux-promo-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.flux-promo-arrow { color: var(--dim); font-size: 16px; }
+.flux-promo-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 9px 18px; border-radius: 8px; border: none;
+  background: var(--red); color: #fff;
+  font-family: var(--f); font-size: 12px; font-weight: 600;
+  cursor: pointer; text-decoration: none;
+  transition: background .15s, transform .12s;
+  white-space: nowrap;
+}
+.flux-promo-btn:hover { background: #f85c5c; transform: translateY(-1px); }
+
+/* Stats bar (region view) */
+.flux-stats-bar {
+  font-size: 11px; color: var(--dim); padding: 2px 0 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04); margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* Sort bar (RoRegion-style: ping, players, fullness) */
+.flux-sort-bar {
+  display: flex; gap: 6px; padding: 4px 0 8px; flex-shrink: 0;
+}
+.flux-sort-btn {
+  padding: 4px 10px; font-size: 11px; font-weight: 500;
+  background: rgba(255,255,255,0.04); color: var(--dim);
+  border: 1px solid transparent; border-radius: 4px;
+  cursor: pointer; transition: all .15s; font-family: var(--f);
+}
+.flux-sort-btn:hover { color: #c0c0c0; background: rgba(255,255,255,0.07); }
+.flux-sort-btn.active { color: #fff; background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.12); }
+
+/* Stats line (default dashboard) */
+.flux-stats-mini { font-size: 11px; color: var(--dim); padding: 2px 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SERVER GRID — 2 columns, scrollable (RoRegion match)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.flux-server-grid {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  align-content: start; padding: 16px 20px;
+  scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.35) transparent;
+}
+.flux-server-grid::-webkit-scrollbar { width: 6px !important; }
+.flux-server-grid::-webkit-scrollbar-track { background: transparent !important; }
+.flux-server-grid::-webkit-scrollbar-thumb { background: rgba(180,180,180,0.45) !important; border-radius: 10px !important; }
+.flux-server-grid::-webkit-scrollbar-thumb:hover { background: rgba(200,200,200,0.65) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SERVER CARD — RoRegion structure: avatars → count → ping → join
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.flux-server-card {
+  background: rgb(45,48,53);  /* lighter — pops against panel bg */
+  border-radius: var(--rl);
+  padding: 15px 20px; margin-bottom: 0;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* ── Player avatars row ──────────────────────────────────────────────── */
+
+.flux-avatars-row {
+  display: flex; flex-wrap: nowrap; gap: 4px;
+  align-items: center; justify-content: center;
+  overflow: hidden; width: 100%;
+}
+
+.flux-avatar {
+  border-radius: 50%; object-fit: cover; background-color: #555;
+  flex: 1 1 0; min-width: 0; max-width: 55px;
+  aspect-ratio: 1 / 1; height: auto;
+}
+
+.flux-avatar-plus {
+  border-radius: 50%; display: flex; justify-content: center; align-items: center;
+  font-size: 13px; font-weight: 600; color: #b0b0b0;
+  background: rgba(255,255,255,0.15);
+  flex: 1 1 0; min-width: 0; max-width: 55px;
+  aspect-ratio: 1 / 1;
+}
+
+/* ── Player count ────────────────────────────────────────────────────── */
+
+.flux-player-count {
+  font-size: 16px; font-weight: 600; color: #d0d0d0;
+  text-align: left;
+}
+
+/* ── Ping ────────────────────────────────────────────────────────────── */
+
+.flux-ping-row {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 15px; vertical-align: middle; font-weight: 600;
+}
+.flux-ping-green  { color: #77cc77; }
+.flux-ping-yellow { color: #dddd77; }
+.flux-ping-red    { color: #ff8888; }
+
+/* ── Join button ─────────────────────────────────────────────────────── */
+
+.flux-join-btn {
+  width: 100%; height: 48px; border-radius: 6px; border: none;
+  background: #3975e0; color: white;
+  font-family: var(--f); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background .2s;
+}
+.flux-join-btn:hover { background: #4a85f0; }
+.flux-join-btn:disabled,
+.flux-join-btn.flux-join-full {
+  background: #555; color: #999; cursor: not-allowed; opacity: 0.6;
+}
+
+/* ── Load more ───────────────────────────────────────────────────────── */
+
+.flux-load-more {
+  grid-column: 1 / -1; margin: 8px auto 0;
+  padding: 9px 28px; background: rgba(255,255,255,0.08);
+  color: #bbb; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600;
+  font-family: var(--f);
+  transition: opacity .2s;
+}
+.flux-load-more:hover { opacity: 0.8; }
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
+
+.flux-empty {
+  grid-column: 1 / -1; text-align: center; padding: 40px 0;
+  color: var(--dim); font-size: 13px; font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   POPUP (extension popup.html)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.flux-popup { min-width: 300px; margin: 0; background: var(--bg); color: var(--txt); font-family: var(--f); }
+.flux-popup main { padding: 14px; }
+.flux-popup h1 { margin: 0 0 10px; font-size: 15px; }
+.flux-popup label { display: block; margin-bottom: 4px; font-size: 11px; color: var(--dim); }
+.flux-popup input { width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; background: var(--card); color: var(--txt); padding: 8px 10px; font-size: 12px; }
+.flux-popup button { margin-top: 8px; width: 100%; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; background: var(--card); color: var(--txt); padding: 7px 10px; font-weight: 700; font-size: 12px; cursor: pointer; }
+.flux-popup button:hover { border-color: var(--grn); }
+.flux-popup #msg { min-height: 18px; margin: 8px 0 0; color: var(--dim); font-size: 11px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE / MOTION
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .flux-dash { flex-direction: column; }
+  .flux-dash-left { width: 100%; max-height: 220px; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .flux-loc-action { width: 24px; height: 22px; font-size: 12px; }
+  .flux-server-grid { grid-template-columns: 1fr; }
+  .flux-dash-right { padding: 16px 16px 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flux-overlay, .flux-modal, .flux-modal-in, .flux-toggle,
+  .flux-loc-row, .flux-promo-btn, .flux-loc-action {
+    animation: none !important; transition: none !important;
+  }
+}

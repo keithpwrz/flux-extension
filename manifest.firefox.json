@@ -1,0 +1,48 @@
+{
+    "manifest_version":  3,
+    "name":  "Flux",
+    "description":  "Find Roblox servers by region with subscription or gamepass access.",
+    "version":  "0.1.1",
+    "action":  {
+                   "default_popup":  "popup.html",
+                   "default_title":  "Flux Server Finder"
+               },
+    "permissions":  [
+                        "storage",
+                        "cookies"
+                    ],
+    "host_permissions":  [
+                             "*://*.roblox.com/*",
+                             "https://n8n.srv875745.hstgr.cloud/*",
+                             "https://flux.keithhub.dev/*",
+                             "http://127.0.0.1/*",
+                             "http://localhost/*"
+                         ],
+    "background":  {
+                       "scripts":  [
+                                       "background.js"
+                                   ],
+                       "type":  "module"
+                   },
+    "content_scripts":  [
+                            {
+                                "matches":  [
+                                                "*://www.roblox.com/*",
+                                                "*://web.roblox.com/*"
+                                            ],
+                                "js":  [
+                                           "content.js"
+                                       ],
+                                "css":  [
+                                            "styles.css"
+                                        ],
+                                "run_at":  "document_start"
+                            }
+                        ],
+    "browser_specific_settings":  {
+                                      "gecko":  {
+                                                    "id":  "flux-server-finder@keith",
+                                                    "strict_min_version":  "121.0"
+                                                }
+                                  }
+}
