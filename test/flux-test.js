@@ -183,8 +183,19 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
   else if (currentUrl.includes('/games/')) fail('Flux button wrapper NOT found');
   else info('Wrapper not found (expected — not on game page)');
 
-  if (containerGuarded) pass('Container guard active (fluxGuarded=1)');
-  else info('Container guard not active (login required for play button container)');
+  if (containerGuarded) pass('Container guard active');
+  else info('Container guard disabled — using recovery poll instead');
+
+  // ── 3b. Verify wrapper survives (recovery poll keeps it alive) ─────────
+
+  if (fluxBtn && fluxWrapper) {
+    console.log('\n── 3b. Verifying wrapper survives (5s wait) ──');
+    await page.waitForTimeout(5000);
+    var survived = await page.$('#flux-btn-wrapper');
+    var survivedBtn = await page.$('#flux-our-play-btn');
+    if (survived && survivedBtn) pass('Wrapper + button survived 5s (recovery poll active)');
+    else fail('Wrapper disappeared after 5s — recovery poll NOT working');
+  }
 
   // ── 4. Check Flux logs ────────────────────────────────────────────────
 

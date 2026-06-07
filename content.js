@@ -710,44 +710,38 @@
     setTimeout(doInject, 0);
   }
 
-  // ── Container guard (RoRegion pattern) — Roblox re-injects children ──
+  // ── Recovery poll — re-injects if Roblox React replaces the container ──
+  // We do NOT prune Roblox-injected children (age gates, verification modals).
+  // RoRegion's aggressive pruning causes the entire container to disappear when
+  // Roblox React detects missing elements and replaces the DOM tree.
 
-  var ALLOWED_CONTAINER_IDS = new Set(['flux-btn-wrapper', 'id-verification-container', 'rrp-btn-wrapper']);
+  var _recoveryPoll = null;
 
-  function pruneContainerChildren(container) {
-    var children = Array.from(container.children);
-    for (var i = 0; i < children.length; i++) {
-      var child = children[i];
-      if (child.id && ALLOWED_CONTAINER_IDS.has(child.id)) continue;
-      if (child.classList && child.classList.contains('btn-common-play-game-lg')) continue;
-      child.remove();
-    }
-  }
+  function startRecoveryPoll() {
+    if (_recoveryPoll) return;
+    _recoveryPoll = setInterval(function() {
+      var wrapper = document.getElementById('flux-btn-wrapper');
+      if (wrapper && wrapper.parentNode) return; // still intact
 
-  function attachContainerGuard(container) {
-    if (container.dataset.fluxGuarded) return;
-    container.dataset.fluxGuarded = '1';
-    var guard = new MutationObserver(function() {
-      pruneContainerChildren(container);
-    });
-    guard.observe(container, { childList: true });
+      // Wrapper is gone or detached — Roblox replaced the container
+      if (wrapper) {
+        console.log('[Flux] wrapper detached, re-injecting...');
+      }
+      toggleReady = false;
+
+      var c = document.getElementById('game-details-play-button-container');
+      if (c) injectOurButton(c);
+    }, 2000); // check every 2s — lightweight, catches React re-renders
   }
 
   function tryInjectToggle() {
     injectFluxStyles();
-    if (toggleReady) return;
     var container = document.getElementById('game-details-play-button-container');
     if (container) {
       injectOurButton(container);
-      if (toggleReady) {
-        pruneContainerChildren(container);
-        attachContainerGuard(container);
-        return;
-      }
     }
-    // Poll every 200ms until button appears (RoRegion uses MutationObserver but
-    // that depends on catching the exact mutation that adds the button. Polling
-    // is more reliable across different Roblox render timings.)
+
+    // Initial poll — wait for the button to appear (container exists but button hasn't rendered yet)
     var attempts = 0;
     var MAX_ATTEMPTS = 75; // 15 seconds
     var poll = setInterval(function() {
@@ -760,8 +754,7 @@
       injectOurButton(c);
       if (toggleReady) {
         clearInterval(poll);
-        pruneContainerChildren(c);
-        attachContainerGuard(c);
+        startRecoveryPoll(); // switch to long-term recovery mode
       } else if (attempts >= MAX_ATTEMPTS) {
         clearInterval(poll);
         console.log('[Flux] gave up waiting for play button after ' + MAX_ATTEMPTS + ' attempts');
@@ -1405,6 +1398,7 @@
         var o = document.querySelector(".flux-overlay"); if (o) { closeOverlay(o); }
         clearAuto();
         domDone = false; toggleReady = false;
+        if (_recoveryPoll) { clearInterval(_recoveryPoll); _recoveryPoll = null; }
         setTimeout(onDOM, 800);
       }
     });
