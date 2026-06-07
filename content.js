@@ -813,6 +813,71 @@
     });
   }
 
+  // Lightweight refresh — fetch player counts only, skip IP resolution.
+  // Merges region data from lastGood by server ID. No gamejoin API calls = no 429s.
+  // Re-renders only the current region's server cards.
+
+  var _refreshingCounts = false;
+
+  async function refreshPlayerCountsOnly() {
+    var p = pid(); if (!p) return;
+    if (_refreshingCounts || _activeResolve) return;
+    _refreshingCounts = true;
+
+    try {
+      // Fetch fresh server list (player counts + ping)
+      var allServers = [];
+      var cursor = null;
+      var pageCount = 0;
+
+      do {
+        var page = await fetchServersDirect(p, cursor);
+        var batch = page.data || [];
+        if (!batch.length) break;
+        for (var i = 0; i < batch.length; i++) {
+          var s = batch[i];
+          if (!s.id) continue;
+          allServers.push({
+            id: s.id, playing: s.playing || 0, maxPlayers: s.maxPlayers || 0,
+            ping: s.ping, fps: s.fps, playerTokens: s.playerTokens || []
+          });
+        }
+        cursor = page.nextPageCursor;
+        pageCount++;
+      } while (cursor && pageCount < 5);
+
+      if (!allServers.length) { _refreshingCounts = false; return; }
+
+      // Merge region data from lastGood by server ID
+      var oldById = {};
+      lastGood.forEach(function(s) { if (s.id && isReal(s)) oldById[s.id] = s; });
+      for (var j = 0; j < allServers.length; j++) {
+        if (oldById[allServers[j].id]) {
+          var old = oldById[allServers[j].id];
+          allServers[j].region = old.region;
+          allServers[j].city = old.city;
+          allServers[j].country = old.country;
+          allServers[j].flag = old.flag;
+          allServers[j].group = old.group;
+          allServers[j].ip = old.ip;
+        }
+      }
+
+      lastGood = allServers;
+      lastFetch = Date.now();
+      filtered = applySort(allServers.filter(function(s) { return s.playing > 0 && s.playing < s.maxPlayers; }));
+
+      // Update only the server cards for the current region
+      var right = document.getElementById("flux-right-panel");
+      if (right && right._viewingRegion) {
+        showRegionServers(right._viewingRegion);
+      }
+    } catch (e) {
+      console.log("[Flux] count refresh error:", e.message);
+    }
+    _refreshingCounts = false;
+  }
+
   // ── Overlay ─────────────────────────────────────────────────────────
 
   function openOverlay() {
@@ -1400,7 +1465,7 @@
 
   // ── Auto-refresh ────────────────────────────────────────────────────
 
-  function startAuto() { clearAuto(); autoTimer = setInterval(function() { if (document.querySelector(".flux-overlay")) doFetch(); }, 30000); }
+  function startAuto() { clearAuto(); autoTimer = setInterval(function() { if (document.querySelector(".flux-overlay")) refreshPlayerCountsOnly(); }, 30000); }
   function clearAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
 
   // ── Init ────────────────────────────────────────────────────────────
