@@ -648,7 +648,7 @@
     styleEl.textContent =
       '#flux-btn-wrapper { display: inline-flex; align-items: stretch; gap: 6px; vertical-align: middle; }' +
       '#flux-our-play-btn {' +
-        'background-color: #10b981 !important;' +
+        'background-color: #0050d8 !important;' +
         'border: none !important;' +
         'cursor: pointer !important;' +
         'display: inline-flex !important;' +
@@ -691,9 +691,9 @@
       ourBtn.type = 'button';
       ourBtn.title = 'Flux Server Finder';
 
-      var iconSize = Math.round(fullHeight * 0.48);
-      // RoRegion globe icon — native play button still launches the game
-      ourBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="' + iconSize + '" height="' + iconSize + '"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+      var iconSize = Math.round(fullHeight * 0.625);
+      // Bold "F" rotated 14° down-right — 5px heavy, sharp edges, #0050d8 blue
+      ourBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="' + iconSize + '" height="' + iconSize + '"><g transform="rotate(14 12 12)"><rect x="5" y="2" width="5" height="20" fill="currentColor"/><rect x="5" y="2" width="14" height="5" fill="currentColor"/><rect x="5" y="10" width="11" height="5" fill="currentColor"/></g></svg>';
       ourBtn.style.cssText = 'width:' + ourSliceWidth + 'px;height:' + fullHeight + 'px;border-radius:6px;';
 
       var wrapper = document.createElement('span');
