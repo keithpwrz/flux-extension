@@ -26,35 +26,6 @@
   --f:         Inter, system-ui, -apple-system, sans-serif;
 }
 
-/* ── Toggle — RoRegion-style split play button ───────────────────────── */
-
-/* Hide Roblox's random server button (RoRegion pattern) */
-.random-server-button,
-#rrp-btn-wrapper,
-#rrp-our-play-btn {
-  display: none !important; visibility: hidden !important; opacity: 0 !important;
-  width: 0 !important; height: 0 !important; overflow: hidden !important;
-  min-width: 0 !important; margin: 0 !important; padding: 0 !important;
-}
-
-/* Flux wrapper — injected by content.js around Roblox Play + our globe */
-#flux-btn-wrapper {
-  display: inline-flex !important; align-items: stretch !important;
-  gap: 6px !important; vertical-align: middle !important;
-}
-
-/* Flux play button (RoRegion-style: green, matches Roblox play icon) */
-#flux-our-play-btn {
-  background-color: #10b981 !important;
-  border: none !important; cursor: pointer !important;
-  display: inline-flex !important; align-items: center !important;
-  justify-content: center !important;
-  color: white !important; flex-shrink: 0 !important;
-  box-shadow: none !important; transition: filter 0.15s ease !important;
-}
-#flux-our-play-btn:hover { filter: brightness(1.12) !important; }
-#flux-our-play-btn:active { filter: brightness(0.88) !important; }
-
 /* ── Overlay ─────────────────────────────────────────────────────────── */
 
 .flux-overlay {
@@ -397,7 +368,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flux-overlay, .flux-modal, .flux-modal-in, .flux-toggle,
+  .flux-overlay, .flux-modal, .flux-modal-in,
   .flux-loc-row, .flux-promo-btn, .flux-loc-action {
     animation: none !important; transition: none !important;
   }

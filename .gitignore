@@ -20,3 +20,8 @@ Thumbs.db
 # Logs / cache
 *.log
 .cache/
+
+# Dependencies / test artifacts
+node_modules/
+package-lock.json
+.playwright-mcp/

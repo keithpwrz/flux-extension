@@ -1,0 +1,28 @@
+{
+  "name": "flux-extension",
+  "version": "1.0.0",
+  "description": "Browser extension that finds Roblox servers by region. See real player counts, pings, and join the best server instantly.",
+  "main": "background.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keithpwrz/flux-extension.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/keithpwrz/flux-extension/issues"
+  },
+  "homepage": "https://github.com/keithpwrz/flux-extension#readme",
+  "dependencies": {
+    "playwright": "^1.60.0"
+  }
+}

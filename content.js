@@ -540,7 +540,6 @@
     lastFetch = Date.now();
     failedRefresh = false;
     filtered = applySort(allServers.filter(function(s) { return s.playing > 0 && s.playing < s.maxPlayers; }));
-    updateToggle();
     refreshUI();
 
     // Stage 2: Resolve IPs in batches of 5
@@ -585,7 +584,6 @@
 
     filtered = applySort(allServers.filter(function(s) { return s.playing > 0 && s.playing < s.maxPlayers; }));
     lastFetch = Date.now();
-    updateToggle();
     refreshUI();
 
     var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
@@ -635,66 +633,100 @@
     try { return !!(chrome && chrome.runtime && chrome.runtime.id); } catch(e) { return false; }
   }
 
-  // ── Play button injection (RoRegion-style — split the Play button) ──
+  // ══════════════════════════════════════════════════════════════════════
+  // Play button — RoRegion-style split injection
+  // Native Roblox play button stays 70% width → launches game normally.
+  // Flux button (30% width, globe icon) → opens Flux dashboard overlay.
+  // Container guard prunes Roblox re-injections continuously.
+  // ══════════════════════════════════════════════════════════════════════
+
+  function injectFluxStyles() {
+    if (document.getElementById('flux-play-btn-styles')) return;
+    var styleEl = document.createElement('style');
+    styleEl.id = 'flux-play-btn-styles';
+    styleEl.textContent =
+      '#flux-btn-wrapper { display: inline-flex; align-items: stretch; gap: 6px; vertical-align: middle; }' +
+      '#flux-our-play-btn {' +
+        'background-color: #10b981 !important;' +
+        'border: none !important;' +
+        'cursor: pointer !important;' +
+        'display: inline-flex !important;' +
+        'align-items: center !important;' +
+        'justify-content: center !important;' +
+        'color: white !important;' +
+        'flex-shrink: 0 !important;' +
+        'box-shadow: none !important;' +
+        'transition: filter 0.15s ease !important;' +
+      '}' +
+      '#flux-our-play-btn:hover { filter: brightness(1.12) !important; }' +
+      '#flux-our-play-btn:active { filter: brightness(0.88) !important; }';
+    document.head.appendChild(styleEl);
+  }
 
   function injectOurButton(container) {
-    var robloxBtn = container.querySelector(".btn-common-play-game-lg");
-    if (!robloxBtn || document.getElementById("flux-btn-wrapper") || toggleReady) return;
+    var robloxBtn = container.querySelector('.btn-common-play-game-lg');
+    if (!robloxBtn || document.getElementById('flux-btn-wrapper') || toggleReady) return;
     toggleReady = true;
 
-    requestAnimationFrame(function() {
-      if (document.getElementById("flux-btn-wrapper")) return;
+    function doInject() {
+      if (document.getElementById('flux-btn-wrapper')) return;
       if (!robloxBtn.parentNode) { toggleReady = false; return; }
 
       var fullWidth = robloxBtn.offsetWidth || 300;
       var fullHeight = robloxBtn.offsetHeight || 48;
-      var ourWidth = Math.round(fullWidth * 0.30);       // 30% for Flux (70/30 split — RoRegion pattern)
-      var robloxNewWidth = fullWidth - ourWidth - 6;      // 6px gap
+      var ourSliceWidth = Math.round(fullWidth * 0.30);
+      var robloxNewWidth = fullWidth - ourSliceWidth - 6;
 
-      robloxBtn.style.setProperty("width", robloxNewWidth + "px", "important");
-      robloxBtn.style.setProperty("min-width", "0", "important");
-      robloxBtn.style.setProperty("flex-shrink", "0", "important");
+      robloxBtn.style.setProperty('width', robloxNewWidth + 'px', 'important');
+      robloxBtn.style.setProperty('min-width', '0', 'important');
+      robloxBtn.style.setProperty('flex-shrink', '0', 'important');
 
-      var ourBtn = document.createElement("button");
-      ourBtn.id = "flux-our-play-btn";
-      ourBtn.type = "button";
-      ourBtn.title = "Flux Server Finder";
-      var iconSize = Math.round(fullHeight * 0.46);
-      ourBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="' + iconSize + '" height="' + iconSize + '"><path d="M8 5v14l11-7z"/></svg>';
-      ourBtn.className = "flux-toggle";
-      ourBtn.style.cssText = "width:" + ourWidth + "px;height:" + fullHeight + "px;border-radius:6px;";
-      ourBtn.onclick = function(e) { e.stopPropagation(); openOverlay(); };
+      var ourBtn = document.createElement('button');
+      ourBtn.id = 'flux-our-play-btn';
+      ourBtn.type = 'button';
+      ourBtn.title = 'Flux Server Finder';
 
-      var wrapper = document.createElement("span");
-      wrapper.id = "flux-btn-wrapper";
-      wrapper.style.cssText = "display:inline-flex;align-items:stretch;gap:6px;vertical-align:middle;";
+      var iconSize = Math.round(fullHeight * 0.48);
+      // RoRegion globe icon — native play button still launches the game
+      ourBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="' + iconSize + '" height="' + iconSize + '"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+      ourBtn.style.cssText = 'width:' + ourSliceWidth + 'px;height:' + fullHeight + 'px;border-radius:6px;';
+
+      var wrapper = document.createElement('span');
+      wrapper.id = 'flux-btn-wrapper';
       robloxBtn.parentNode.insertBefore(wrapper, robloxBtn);
       wrapper.appendChild(robloxBtn);
       wrapper.appendChild(ourBtn);
 
-      console.log("[Flux] mounted beside play button");
-    });
+      ourBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openOverlay();
+      });
+
+      console.log('[Flux] mounted beside play button');
+    }
+
+    // Use setTimeout (works in headless) instead of requestAnimationFrame (only fires during paint cycles)
+    setTimeout(doInject, 0);
   }
 
-  // ── Container guard (RoRegion pattern) ──────────────────────────────
-  // Roblox injects/removes children in the play button container.
-  // This guard prunes everything except our wrapper + the real play button.
+  // ── Container guard (RoRegion pattern) — Roblox re-injects children ──
 
-  var ALLOWED_CONTAINER_IDS = new Set(["flux-btn-wrapper", "id-verification-container", "rrp-btn-wrapper"]);
+  var ALLOWED_CONTAINER_IDS = new Set(['flux-btn-wrapper', 'id-verification-container', 'rrp-btn-wrapper']);
 
   function pruneContainerChildren(container) {
     var children = Array.from(container.children);
     for (var i = 0; i < children.length; i++) {
       var child = children[i];
       if (child.id && ALLOWED_CONTAINER_IDS.has(child.id)) continue;
-      if (child.classList && child.classList.contains("btn-common-play-game-lg")) continue;
+      if (child.classList && child.classList.contains('btn-common-play-game-lg')) continue;
       child.remove();
     }
   }
 
   function attachContainerGuard(container) {
     if (container.dataset.fluxGuarded) return;
-    container.dataset.fluxGuarded = "1";
+    container.dataset.fluxGuarded = '1';
     var guard = new MutationObserver(function() {
       pruneContainerChildren(container);
     });
@@ -702,8 +734,9 @@
   }
 
   function tryInjectToggle() {
+    injectFluxStyles();
     if (toggleReady) return;
-    var container = document.getElementById("game-details-play-button-container");
+    var container = document.getElementById('game-details-play-button-container');
     if (container) {
       injectOurButton(container);
       if (toggleReady) {
@@ -712,28 +745,28 @@
         return;
       }
     }
-    // MutationObserver poll (RoRegion pattern — keeps trying until injected)
-    var obs = new MutationObserver(function() {
-      var c = document.getElementById("game-details-play-button-container");
-      if (!c) return;
+    // Poll every 200ms until button appears (RoRegion uses MutationObserver but
+    // that depends on catching the exact mutation that adds the button. Polling
+    // is more reliable across different Roblox render timings.)
+    var attempts = 0;
+    var MAX_ATTEMPTS = 75; // 15 seconds
+    var poll = setInterval(function() {
+      attempts++;
+      var c = document.getElementById('game-details-play-button-container');
+      if (!c) {
+        if (attempts >= MAX_ATTEMPTS) clearInterval(poll);
+        return;
+      }
       injectOurButton(c);
       if (toggleReady) {
-        obs.disconnect();
+        clearInterval(poll);
         pruneContainerChildren(c);
         attachContainerGuard(c);
+      } else if (attempts >= MAX_ATTEMPTS) {
+        clearInterval(poll);
+        console.log('[Flux] gave up waiting for play button after ' + MAX_ATTEMPTS + ' attempts');
       }
-    });
-    obs.observe(document.body, { childList: true, subtree: true });
-    // Timeout is generous — RoRegion's observer runs indefinitely
-    setTimeout(function() { obs.disconnect(); }, 30000);
-  }
-
-  function updateToggle() {
-    // Flux button pulses green when servers are loaded
-    var t = document.getElementById("flux-our-play-btn");
-    if (!t) return;
-    if (lastGood.length > 0) t.style.setProperty("box-shadow", "0 0 10px var(--grn)", "important");
-    else t.style.setProperty("box-shadow", "none", "important");
+    }, 200);
   }
 
   // ── Game launch listener (from background.js) ─────────────────────
@@ -755,7 +788,6 @@
       refreshing = false;
       failedRefresh = true;
       console.log("[Flux] processAllServers error:", e.message);
-      updateToggle();
       refreshUI();
     });
   }
@@ -766,7 +798,6 @@
     var old = document.querySelector(".flux-overlay");
     if (old) { closeOverlay(old); return; }
     if (!lastGood.length) doFetch();
-    if (!toggleReady) return;
 
     var overlay = document.createElement("div");
     overlay.className = "flux-overlay";
@@ -1355,7 +1386,7 @@
 
   async function init() {
     if (!isGamePage()) return;
-    tryInjectToggle();   // inject button immediately — don't wait for IP table
+    tryInjectToggle();     // RoRegion-style — split native play button, add Flux dashboard button beside it
     await loadRRIpTable(); // RoRegion CIDR table (cached 24h) — MUST load before resolution
     if (pid()) doFetch();  // now safe — IP table is ready
   }
@@ -1371,7 +1402,6 @@
       if (location.href !== currentUrl) {
         currentUrl = location.href;
         lastGood = []; filtered = []; selectedRegion = null; // discard old game's servers
-        var t = document.getElementById("flux-our-play-btn"); if (t) { var w = t.parentNode; if (w && w.id === "flux-btn-wrapper") w.remove(); else t.remove(); }
         var o = document.querySelector(".flux-overlay"); if (o) { closeOverlay(o); }
         clearAuto();
         domDone = false; toggleReady = false;
