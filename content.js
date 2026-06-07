@@ -1465,7 +1465,7 @@
 
   // ── Auto-refresh ────────────────────────────────────────────────────
 
-  function startAuto() { clearAuto(); autoTimer = setInterval(function() { if (document.querySelector(".flux-overlay")) refreshPlayerCountsOnly(); }, 30000); }
+  function startAuto() { clearAuto(); autoTimer = setInterval(function() { if (document.querySelector(".flux-overlay")) refreshPlayerCountsOnly(); }, 10000); }
   function clearAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
 
   // ── Init ────────────────────────────────────────────────────────────
