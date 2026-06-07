@@ -1,5 +1,6 @@
 // Flux — RoRegion-style server finder injected into Roblox game pages
 (function() {
+  console.log('[Flux] content script loaded v0.0.6');
   // ═══════════════════════════════════════════════════════════════
   // XHR INTERCEPTION — BetterBlox-style hook
   // Captures CSRF tokens + caches server list responses from Roblox
@@ -664,9 +665,13 @@
   }
 
   function injectOurButton(container) {
+    // Don't use toggleReady for gating — it races with setTimeout-based injection.
+    // Check DOM directly instead: is the wrapper already present?
+    if (document.getElementById('flux-btn-wrapper')) return;
     var robloxBtn = container.querySelector('.btn-common-play-game-lg');
-    if (!robloxBtn || document.getElementById('flux-btn-wrapper') || toggleReady) return;
-    toggleReady = true;
+    if (!robloxBtn) return;
+
+    toggleReady = true; // signal that we've started injection (used by polls to know we succeeded)
 
     function doInject() {
       if (document.getElementById('flux-btn-wrapper')) return;
@@ -710,28 +715,51 @@
     setTimeout(doInject, 0);
   }
 
-  // ── Recovery poll — re-injects if Roblox React replaces the container ──
-  // We do NOT prune Roblox-injected children (age gates, verification modals).
-  // RoRegion's aggressive pruning causes the entire container to disappear when
-  // Roblox React detects missing elements and replaces the DOM tree.
+  // ── Recovery system — detects when Roblox React replaces the container ──
+  // Slow poll (2s) monitors wrapper health. When wrapper disappears, a fast
+  // poll (200ms) fires up and keeps re-injecting until the button sticks.
+  // This handles Roblox React nuking + recreating the container at any speed.
 
   var _recoveryPoll = null;
+  var _fastPoll = null;
+
+  function startFastPoll() {
+    if (_fastPoll) return;
+    var attempts = 0;
+    console.log('[Flux] starting fast recovery poll...');
+    _fastPoll = setInterval(function() {
+      attempts++;
+      var c = document.getElementById('game-details-play-button-container');
+      if (!c) return; // container not back yet — keep waiting
+      injectOurButton(c);
+      if (toggleReady) {
+        // Re-injection succeeded
+        clearInterval(_fastPoll);
+        _fastPoll = null;
+        console.log('[Flux] recovery re-injection successful');
+      } else if (attempts >= 150) { // 30 seconds max
+        clearInterval(_fastPoll);
+        _fastPoll = null;
+        console.log('[Flux] recovery gave up after 30s');
+      }
+    }, 200);
+  }
 
   function startRecoveryPoll() {
     if (_recoveryPoll) return;
     _recoveryPoll = setInterval(function() {
       var wrapper = document.getElementById('flux-btn-wrapper');
-      if (wrapper && wrapper.parentNode) return; // still intact
+      if (wrapper && wrapper.parentNode && wrapper.parentNode.id === 'game-details-play-button-container') {
+        return; // still intact — nothing to do
+      }
 
       // Wrapper is gone or detached — Roblox replaced the container
-      if (wrapper) {
-        console.log('[Flux] wrapper detached, re-injecting...');
-      }
       toggleReady = false;
-
-      var c = document.getElementById('game-details-play-button-container');
-      if (c) injectOurButton(c);
-    }, 2000); // check every 2s — lightweight, catches React re-renders
+      if (!_fastPoll) {
+        console.log('[Flux] wrapper lost, starting fast recovery...');
+        startFastPoll();
+      }
+    }, 2000); // check every 2s — lightweight
   }
 
   function tryInjectToggle() {
@@ -1399,12 +1427,45 @@
         clearAuto();
         domDone = false; toggleReady = false;
         if (_recoveryPoll) { clearInterval(_recoveryPoll); _recoveryPoll = null; }
+        if (_fastPoll) { clearInterval(_fastPoll); _fastPoll = null; }
         setTimeout(onDOM, 800);
       }
     });
     navObserver.observe(document.documentElement, { childList: true, subtree: true });
   }
 
-  if (document.body) onDOM();
-  else new MutationObserver(function() { if (document.body) { this.disconnect(); onDOM(); } }).observe(document.documentElement, { childList: true, subtree: true });
+  // Robust init — try multiple strategies to catch the DOM ready moment.
+  // document_start means body may not exist yet. MutationObserver on
+  // documentElement is fragile in some Chrome builds — use DOMContentLoaded
+  // as a reliable fallback.
+  function boot() {
+    if (domDone) return;
+    try {
+      if (document.body) { onDOM(); return true; }
+    } catch(e) { console.log('[Flux] boot check error:', e.message); }
+    return false;
+  }
+
+  if (boot()) { /* ready immediately */ }
+  else {
+    // Strategy 1: MutationObserver — wait for <body> to be appended
+    try {
+      var _bootObs = new MutationObserver(function() {
+        if (boot()) { _bootObs.disconnect(); }
+      });
+      _bootObs.observe(document.documentElement || document, { childList: true, subtree: true });
+      // Safety timeout — if MutationObserver never fires, try DOMContentLoaded
+      setTimeout(function() {
+        if (!domDone) {
+          console.log('[Flux] MutationObserver timed out, falling back to DOMContentLoaded');
+          _bootObs.disconnect();
+          boot();
+        }
+      }, 2000);
+    } catch(e) {
+      console.log('[Flux] observer setup failed:', e.message);
+      // Strategy 2: DOMContentLoaded as last resort
+      document.addEventListener('DOMContentLoaded', function() { boot(); });
+    }
+  }
 })();
