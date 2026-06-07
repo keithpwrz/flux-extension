@@ -2,7 +2,7 @@
     "manifest_version":  3,
     "name":  "Flux",
     "description":  "Find Roblox servers by region with subscription or gamepass access.",
-    "version":  "0.1.1",
+    "version":  "1.0.0",
     "action":  {
                    "default_popup":  "popup.html",
                    "default_title":  "Flux Server Finder"

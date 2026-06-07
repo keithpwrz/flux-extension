@@ -1,6 +1,6 @@
 // Flux — RoRegion-style server finder injected into Roblox game pages
 (function() {
-  console.log('[Flux] content script loaded v0.0.6');
+  console.log('[Flux] content script loaded v1.0.0');
   // ═══════════════════════════════════════════════════════════════
   // XHR INTERCEPTION — BetterBlox-style hook
   // Captures CSRF tokens + caches server list responses from Roblox
