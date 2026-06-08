@@ -1,8 +1,3 @@
-// Flux extension — Playwright test
-// Usage: node test/flux-test.js [--headed] [--game-id=2753915549]
-//
-// Loads the Flux extension into Chromium, navigates to a Roblox game page,
-// and verifies the dashboard button is injected beside the native play button.
 
 const { chromium } = require('playwright');
 const path = require('path');
@@ -11,7 +6,6 @@ const fs = require('fs');
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 const USER_DATA_DIR = path.join(__dirname, '..', '.playwright-mcp');
 
-// Parse args
 const args = process.argv.slice(2);
 const HEADED = args.includes('--headed');
 const GAME_ID = (args.find(a => a.startsWith('--game-id=')) || '--game-id=2753915549').split('=')[1];
@@ -29,7 +23,6 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
   console.log(`   Game URL:  ${GAME_URL}`);
   console.log(`   Headed:    ${HEADED}\n`);
 
-  // ── 1. Launch browser with extension ──────────────────────────────────
 
   console.log('── 1. Launching Chromium with Flux extension ──');
 
@@ -43,14 +36,12 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
       '--disable-setuid-sandbox',
     ];
 
-    // New headless mode supports extensions; old headless does not.
-    // In headed mode, don't pass any headless flag.
     if (!HEADED) {
       launchArgs.push('--headless=new');
     }
 
     context = await chromium.launchPersistentContext(USER_DATA_DIR, {
-      headless: false,  // we control headless via args for extension compat
+      headless: false,
       args: launchArgs,
       ignoreHTTPSErrors: true,
     });
@@ -61,13 +52,11 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
     return;
   }
 
-  // ── 2. Open Roblox game page ──────────────────────────────────────────
 
   console.log('\n── 2. Navigating to Roblox game page ──');
 
   const page = await context.newPage();
 
-  // Collect Flux console logs
   const fluxLogs = [];
   page.on('console', msg => {
     const text = msg.text();
@@ -87,17 +76,14 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
     return;
   }
 
-  // Wait a moment for any redirects to settle, then grab diagnostics
   await page.waitForTimeout(2000);
 
   const currentUrl = page.url();
   console.log(`  URL: ${currentUrl}`);
 
-  // Diagnostic: check extension state
   const diag = await page.evaluate(async () => {
     const info = {};
 
-    // Check if extension context is available
     info.hasChrome = typeof chrome !== 'undefined';
     info.hasRuntime = info.hasChrome && !!(chrome && chrome.runtime);
     info.hasRuntimeId = false;
@@ -105,20 +91,17 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
       try { info.hasRuntimeId = !!(chrome.runtime && chrome.runtime.id); } catch(e) {}
     }
 
-    // Check if Flux injected anything
     info.hasFluxStyles = !!document.getElementById('flux-play-btn-styles');
     info.hasFluxBtn = !!document.getElementById('flux-our-play-btn');
     info.hasXHROverride = false;
     try { info.hasXHROverride = window.XMLHttpRequest.toString().includes('_fluxUrl'); } catch(e) {}
 
-    // Check the play button container
     const container = document.getElementById('game-details-play-button-container');
     info.hasContainer = !!container;
     info.containerChildren = container ? container.children.length : 0;
     info.containerHTML = container ? container.innerHTML.substring(0, 500) : 'N/A';
     info.hasNativePlayBtn = container ? !!container.querySelector('.btn-common-play-game-lg') : false;
 
-    // Check body
     info.hasBody = !!document.body;
     info.bodyChildren = document.body ? document.body.children.length : 0;
 
@@ -147,7 +130,6 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
     info(`Unexpected URL: ${currentUrl}`);
   }
 
-  // ── 3. Wait for Flux injection ────────────────────────────────────────
 
   console.log('\n── 3. Waiting for Flux button injection ──');
 
@@ -186,7 +168,6 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
   if (containerGuarded) pass('Container guard active');
   else info('Container guard disabled — using recovery poll instead');
 
-  // ── 3b. Verify wrapper survives (recovery poll keeps it alive) ─────────
 
   if (fluxBtn && fluxWrapper) {
     console.log('\n── 3b. Verifying wrapper survives (5s wait) ──');
@@ -197,7 +178,6 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
     else fail('Wrapper disappeared after 5s — recovery poll NOT working');
   }
 
-  // ── 4. Check Flux logs ────────────────────────────────────────────────
 
   console.log('\n── 4. Flux console output ──');
 
@@ -218,7 +198,6 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
   if (doneLog) pass(`Servers resolved: ${doneLog}`);
   else info('Server resolution not complete (requires logged-in Roblox session)');
 
-  // ── 5. Check error logs ───────────────────────────────────────────────
 
   console.log('\n── 5. Error check ──');
 
@@ -234,7 +213,6 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
   if (csrfError) info('CSRF token unavailable (expected — needs Roblox login in browser)');
   if (errorLogs.length === 0) pass('No errors in Flux logs');
 
-  // ── 6. Button appearance check (headed only) ──────────────────────────
 
   if (HEADED && fluxBtn) {
     console.log('\n── 6. Visual check ──');
@@ -250,12 +228,10 @@ function info(msg) { RESULTS.info.push(msg); console.log(`  ℹ️  ${msg}`); }
     }
   }
 
-  // ── Cleanup ───────────────────────────────────────────────────────────
 
   await context.close();
   printSummary();
 
-  // Exit with correct code
   process.exit(RESULTS.failed.length > 0 ? 1 : 0);
 })().catch(e => {
   console.error('FATAL:', e.message);

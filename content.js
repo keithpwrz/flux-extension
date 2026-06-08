@@ -1,10 +1,5 @@
-// Flux — RoRegion-style server finder injected into Roblox game pages
 (function() {
   console.log('[Flux] content script loaded v1.0.0');
-  // ═══════════════════════════════════════════════════════════════
-  // XHR INTERCEPTION — BetterBlox-style hook
-  // Captures CSRF tokens + caches server list responses from Roblox
-  // ═══════════════════════════════════════════════════════════════
   (function() {
     var OrigXHR = window.XMLHttpRequest;
     window.XMLHttpRequest = function() {
@@ -20,13 +15,11 @@
       xhr.send = function(body) {
         xhr.addEventListener('load', function() {
           try {
-            // Capture CSRF token from ANY Roblox API response
             var csrf = xhr.getResponseHeader('x-csrf-token');
             if (csrf) {
               window.__fluxCsrfToken = csrf;
             }
 
-            // Cache server list responses from games.roblox.com
             var url = xhr._fluxUrl;
             if (url && url.indexOf('games.roblox.com/v1/games/') !== -1 && url.indexOf('/servers/') !== -1) {
               var ct = xhr.getResponseHeader('content-type');
@@ -50,37 +43,29 @@
     };
   })();
 
-  // ═══════════════════════════════════════════════════════════════
 
-  var lastGood = [];        // last successful unfiltered server list
-  var filtered = [];        // currently sorted/filtered display list
+  var lastGood = [];
+  var filtered = [];
   var refreshing = false;
   var failedRefresh = false;
   var lastFetch = null;
   var autoTimer = null;
-  var activeSort = "ping-lowest";   // default: RoRegion-style — best ping first
+  var activeSort = "ping-lowest";
   var toggleReady = false;
   var currentUrl = location.href;
-  var selectedRegion = null;   // currently selected region key in sidebar
+  var selectedRegion = null;
   var BATCH_SIZE = 20;
   var visibleServerCount = 0;
 
-  // ── Region display mapping ──────────────────────────────────────────
-  // Maps Roblox region strings → display name and continent group.
-  // Exact 16 regions from RoRegion source (defaultRegions array).
-  // Source: RoRegion regionSelector.js line 2215
 
   var REGION_MAP = {
-    // Europe (RoRegion: DE, FR, NL, GB)
     "frankfurt, de":            { name: "Frankfurt, Germany",         group: "EUROPE",      code: "DE" },
     "paris, fr":                { name: "Paris, France",              group: "EUROPE",      code: "FR" },
     "amsterdam, nl":            { name: "Amsterdam, Netherlands",     group: "EUROPE",      code: "NL" },
     "london, uk":               { name: "London, UK",                 group: "EUROPE",      code: "GB" },
-    // Asia (RoRegion: SG, JP, IN)
     "singapore, sg":            { name: "Singapore",                  group: "ASIA",        code: "SG" },
     "tokyo, jp":                { name: "Tokyo, Japan",               group: "ASIA",        code: "JP" },
     "mumbai, in":               { name: "Mumbai, India",              group: "ASIA",        code: "IN" },
-    // North America (RoRegion: US-CA, US-VA, US-IL, US-TX, US-FL, US-NY, US-WA)
     "los angeles, ca":          { name: "LA, California, USA",        group: "NORTH AMERICA", code: "US-CA" },
     "ashburn, va":              { name: "Ashburn, Virginia, USA",     group: "NORTH AMERICA", code: "US-VA" },
     "chicago, il":              { name: "Chicago, Illinois, USA",     group: "NORTH AMERICA", code: "US-IL" },
@@ -88,13 +73,10 @@
     "miami, fl":                { name: "Miami, Florida, USA",        group: "NORTH AMERICA", code: "US-FL" },
     "new york city, ny":        { name: "New York City, New York, USA", group: "NORTH AMERICA", code: "US-NY" },
     "seattle, wa":              { name: "Seattle, Washington, USA",   group: "NORTH AMERICA", code: "US-WA" },
-    // Oceania (RoRegion: AU)
     "sydney, au":               { name: "Sydney, Australia",          group: "OCEANIA",     code: "AU" },
-    // South America (RoRegion: BR)
     "são paulo, br":            { name: "São Paulo, Brazil",          group: "SOUTH AMERICA", code: "BR" },
   };
 
-  // Reverse map: RoRegion region code → REGION_MAP key (for CIDR table lookup)
   var RR_CODE_TO_KEY = {};
   for (var _rmk in REGION_MAP) {
     if (REGION_MAP[_rmk].code) RR_CODE_TO_KEY[REGION_MAP[_rmk].code] = _rmk;
@@ -106,10 +88,8 @@
     }
     var r = raw.toLowerCase().trim();
 
-    // Exact match
     if (REGION_MAP[r]) return REGION_MAP[r];
 
-    // Match by city name
     var cityPart = r.split(",")[0].trim();
     for (var key in REGION_MAP) {
       var keyCity = key.split(",")[0].trim();
@@ -122,7 +102,6 @@
     return { name: raw, group: "OTHER", code: null };
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────
 
   function pid() { var m = location.pathname.match(/\/games\/(\d+)/); return m ? m[1] : ""; }
   function isGamePage() { return /\/games\/\d+/.test(location.pathname); }
@@ -130,7 +109,6 @@
   function timeAgo(d) { if (!d) return "never"; var s = Math.floor((Date.now()-d)/1000); if (s<60) return s+"s ago"; if (s<3600) return Math.floor(s/60)+"m ago"; return Math.floor(s/3600)+"h ago"; }
   function delay(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
 
-  // ── Flag images (flagcdn.com — same as RoRegion) ────────────────────
 
   function getRegionFlag(code) {
     var map = {
@@ -144,7 +122,6 @@
     return 'https://flagcdn.com/20x15/' + cc + '.png';
   }
 
-  // Map region display name → country code for flagcdn.com
   var REGION_FLAG_CODES = {
     "Frankfurt, Germany": "DE", "Paris, France": "FR", "Tokyo, Japan": "JP",
     "São Paulo, Brazil": "BR", "Amsterdam, Netherlands": "NL",
@@ -162,7 +139,6 @@
     return 'https://flagcdn.com/20x15/' + code.toLowerCase() + '.png';
   }
 
-  // ── Thumbnail fetching (RoRegion-style — batch API) ─────────────────
 
   var _thumbnailCache = {};
 
@@ -204,7 +180,6 @@
           if (token) _thumbnailCache[token] = (d.state === "Completed" && d.imageUrl) ? d.imageUrl : null;
         });
       }
-      // RoRegion pattern: 250ms delay between batches to avoid rate limits
       await delay(250);
     } catch (e) { /* silent */ }
 
@@ -213,27 +188,24 @@
     return out;
   }
 
-  // ── Direct Roblox API (extension-only — no Python backend) ────────────
 
   var _csrfToken = null;
-  var _serverCache = {};       // serverId → resolved region data
-  var _activeResolve = false;  // prevent duplicate resolution runs
-  var _CONCURRENT = 4;         // concurrent gamejoin calls (BetterBlox uses 4)
-  var _rateLimitPause = false;  // global flag — pauses all workers on 429
+  var _serverCache = {};
+  var _activeResolve = false;
+  var _CONCURRENT = 4;
+  var _rateLimitPause = false;
 
-  // ── RoRegion CIDR table (loaded from GitHub, cached in storage) ──────
-  var _rrIpTable = null;    // IP /24 → {co, ci, r, la, lo}
-  var _rrCountries = [];    // [[name, code], ...]
-  var _rrRegions = [];      // [state_code, ...]
-  var _rrCities = [];       // [city_name, ...]
+  var _rrIpTable = null;
+  var _rrCountries = [];
+  var _rrRegions = [];
+  var _rrCities = [];
 
   async function loadRRIpTable() {
     var RR_URL = "https://raw.githubusercontent.com/RoRegion/Storage/refs/heads/main/regionList.json";
     var CACHE_KEY = "flux_rr_ip_table";
     var CACHE_TIME_KEY = "flux_rr_ip_table_time";
-    var TTL = 86400000; // 24 hours
+    var TTL = 86400000;
 
-    // Try cache first
     try {
       if (chrome && chrome.storage && chrome.storage.local) {
         var cached = await new Promise(function(resolve) {
@@ -250,7 +222,6 @@
       }
     } catch (e) { /* proceed to fetch */ }
 
-    // Fetch from GitHub
     try {
       var resp = await fetch(RR_URL, { cache: "no-cache" });
       if (!resp.ok) return;
@@ -264,7 +235,6 @@
         _rrIpTable[key] = raw[key];
       }
 
-      // Cache to storage
       try {
         if (chrome && chrome.storage && chrome.storage.local) {
           chrome.storage.local.set({
@@ -280,7 +250,6 @@
 
   async function getCsrfToken() {
     if (_csrfToken) return _csrfToken;
-    // Try XHR-intercepted token first (zero-cost — no API call)
     if (window.__fluxCsrfToken) {
       _csrfToken = window.__fluxCsrfToken;
       return _csrfToken;
@@ -293,7 +262,6 @@
       if (_csrfToken) { window.__fluxCsrfToken = _csrfToken; return _csrfToken; }
     } catch (e) { /* continue to fallback */ }
 
-    // RoRegion fallback: read from page <meta> tag
     var meta = document.querySelector('meta[name="csrf-token"]');
     if (meta && meta.content) {
       _csrfToken = meta.content;
@@ -303,7 +271,6 @@
     return null;
   }
 
-  // CIDR-based IP → region matching (same data as Python backend)
   var IP_REGIONS = [
     { prefix: "128.116.115",   flag: "🇺🇸", city: "Seattle, WA",       country: "US", group: "NORTH AMERICA" },
     { prefix: "128.116.116",   flag: "🇺🇸", city: "Los Angeles, CA",   country: "US", group: "NORTH AMERICA" },
@@ -350,7 +317,6 @@
   function matchIPToRegion(ip) {
     if (!ip || ip.indexOf("10.") === 0 || ip.indexOf("127.") === 0 || ip === "0.0.0.0") return null;
 
-    // Primary: RoRegion CIDR table (loaded from GitHub, comprehensive /24 coverage)
     if (_rrIpTable) {
       var ip24 = ip.split(".").slice(0, 3).join(".") + ".0";
       var entry = _rrIpTable[ip24];
@@ -363,7 +329,6 @@
           var ri = REGION_MAP[mapKey];
           return { region: ri.name, city: ri.name, country: ri.code, group: ri.group };
         }
-        // Try country-only fallback
         var cKey = RR_CODE_TO_KEY[countryCode];
         if (cKey && REGION_MAP[cKey]) {
           var ci = REGION_MAP[cKey];
@@ -372,7 +337,6 @@
       }
     }
 
-    // Fallback: hardcoded CIDR table
     for (var i = 0; i < IP_REGIONS.length; i++) {
       var r = IP_REGIONS[i];
       if (ip.indexOf(r.prefix) === 0) {
@@ -382,7 +346,6 @@
     return null;
   }
 
-  // Fetch servers directly from Roblox (Desc = most-filled first, client-side sort handles display)
   async function fetchServersDirect(placeId, cursor) {
     cursor = cursor || "";
     var url = "https://games.roblox.com/v1/games/" + placeId + "/servers/Public?sortOrder=Desc&excludeFullGames=true&limit=100";
@@ -407,7 +370,6 @@
     return { data: [], nextPageCursor: null };
   }
 
-  // Resolve one server's IP via gamejoin (CSRF token, 3 retries, GPS extraction)
   async function resolveServerIP(placeId, serverId) {
     if (_serverCache[serverId] !== undefined) return _serverCache[serverId];
 
@@ -440,7 +402,7 @@
           continue;
         }
         if (resp.status === 429) {
-          _rateLimitPause = true;  // signal main loop to pause
+          _rateLimitPause = true;
           var ra429 = parseInt(resp.headers.get("retry-after")) || 4;
           await delay(ra429 * 1000);
           continue;
@@ -481,7 +443,6 @@
     return null;
   }
 
-  // Main flow: fetch servers → resolve IPs 5 at a time → live UI updates
   async function processAllServers(placeId) {
     if (_activeResolve) return;
     _activeResolve = true;
@@ -491,9 +452,8 @@
     var allServers = [];
     var cursor = null;
     var pageCount = 0;
-    var MAX_PAGES = 5;  // up to 500 servers
+    var MAX_PAGES = 5;
 
-    // Stage 1: Fetch & paginate
     do {
       var page = await fetchServersDirect(placeId, cursor);
       var batch = page.data || [];
@@ -522,7 +482,6 @@
       return;
     }
 
-    // Merge with lastGood to preserve previous region data
     var oldById = {};
     lastGood.forEach(function(s) { if (s.id && isReal(s)) oldById[s.id] = s; });
     for (var j = 0; j < allServers.length; j++) {
@@ -543,7 +502,6 @@
     filtered = applySort(allServers.filter(function(s) { return s.playing > 0 && s.playing < s.maxPlayers; }));
     refreshUI();
 
-    // Stage 2: Resolve IPs in batches of 5
     var toResolve = [];
     for (var k = 0; k < allServers.length; k++) {
       var srv = allServers[k];
@@ -556,7 +514,6 @@
       console.log("[Flux] resolving " + toResolve.length + " servers (" + _CONCURRENT + " at a time)...");
       var resolved = 0;
       for (var bi = 0; bi < toResolve.length; bi += _CONCURRENT) {
-        // Global rate limit backoff (RoRegion pattern)
         if (_rateLimitPause) {
           console.log("[Flux] rate limit pause, waiting 4s...");
           await delay(4000);
@@ -576,7 +533,6 @@
             resolved++;
           }).catch(function() { resolved++; });
         }));
-        // Live sidebar update
         refreshSidebar();
         if (bi + _CONCURRENT < toResolve.length) await delay(50);
       }
@@ -593,7 +549,6 @@
     _activeResolve = false;
   }
 
-  // ── Server helpers ──────────────────────────────────────────────────
 
   function label(s, list) {
     if (isReal(s)) return s.region + " Server";
@@ -608,13 +563,11 @@
 
   function applySort(list) {
     var a = list.slice();
-    // Full servers always pushed to bottom
     var nonFull = [], full = [];
     for (var i = 0; i < a.length; i++) {
       if (a[i].playing >= a[i].maxPlayers) full.push(a[i]);
       else nonFull.push(a[i]);
     }
-    // Sort non-full servers
     if (activeSort === "ping-lowest") {
       nonFull.sort(function(x,y) { return (x.ping||999) - (y.ping||999) || (y.playing - x.playing); });
     } else if (activeSort === "most-players") {
@@ -622,24 +575,16 @@
     } else if (activeSort === "least-full") {
       nonFull.sort(function(x,y) { return (x.playing/x.maxPlayers) - (y.playing/y.maxPlayers) || (x.ping||999) - (y.ping||999); });
     } else {
-      // Default: ping-lowest
       nonFull.sort(function(x,y) { return (x.ping||999) - (y.ping||999) || (y.playing - x.playing); });
     }
     return nonFull.concat(full);
   }
 
-  // ── Extension context guard ─────────────────────────────────────────
 
   function extOk() {
     try { return !!(chrome && chrome.runtime && chrome.runtime.id); } catch(e) { return false; }
   }
 
-  // ══════════════════════════════════════════════════════════════════════
-  // Play button — RoRegion-style split injection
-  // Native Roblox play button stays 70% width → launches game normally.
-  // Flux button (30% width, globe icon) → opens Flux dashboard overlay.
-  // Container guard prunes Roblox re-injections continuously.
-  // ══════════════════════════════════════════════════════════════════════
 
   function injectFluxStyles() {
     if (document.getElementById('flux-play-btn-styles')) return;
@@ -665,13 +610,11 @@
   }
 
   function injectOurButton(container) {
-    // Don't use toggleReady for gating — it races with setTimeout-based injection.
-    // Check DOM directly instead: is the wrapper already present?
     if (document.getElementById('flux-btn-wrapper')) return;
     var robloxBtn = container.querySelector('.btn-common-play-game-lg');
     if (!robloxBtn) return;
 
-    toggleReady = true; // signal that we've started injection (used by polls to know we succeeded)
+    toggleReady = true;
 
     function doInject() {
       if (document.getElementById('flux-btn-wrapper')) return;
@@ -692,7 +635,6 @@
       ourBtn.title = 'Flux Server Finder';
 
       var iconSize = Math.round(fullHeight * 0.625);
-      // Bold "F" rotated 14° down-right — 5px heavy, sharp edges, #0050d8 blue
       ourBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="' + iconSize + '" height="' + iconSize + '"><g transform="rotate(14 12 12)"><rect x="5" y="2" width="5" height="20" fill="currentColor"/><rect x="5" y="2" width="14" height="5" fill="currentColor"/><rect x="5" y="10" width="11" height="5" fill="currentColor"/></g></svg>';
       ourBtn.style.cssText = 'width:' + ourSliceWidth + 'px;height:' + fullHeight + 'px;border-radius:6px;';
 
@@ -711,14 +653,9 @@
       console.log('[Flux] mounted beside play button');
     }
 
-    // Use setTimeout (works in headless) instead of requestAnimationFrame (only fires during paint cycles)
     setTimeout(doInject, 0);
   }
 
-  // ── Recovery system — detects when Roblox React replaces the container ──
-  // Slow poll (2s) monitors wrapper health. When wrapper disappears, a fast
-  // poll (200ms) fires up and keeps re-injecting until the button sticks.
-  // This handles Roblox React nuking + recreating the container at any speed.
 
   var _recoveryPoll = null;
   var _fastPoll = null;
@@ -730,14 +667,13 @@
     _fastPoll = setInterval(function() {
       attempts++;
       var c = document.getElementById('game-details-play-button-container');
-      if (!c) return; // container not back yet — keep waiting
+      if (!c) return;
       injectOurButton(c);
       if (toggleReady) {
-        // Re-injection succeeded
         clearInterval(_fastPoll);
         _fastPoll = null;
         console.log('[Flux] recovery re-injection successful');
-      } else if (attempts >= 150) { // 30 seconds max
+      } else if (attempts >= 150) {
         clearInterval(_fastPoll);
         _fastPoll = null;
         console.log('[Flux] recovery gave up after 30s');
@@ -750,16 +686,15 @@
     _recoveryPoll = setInterval(function() {
       var wrapper = document.getElementById('flux-btn-wrapper');
       if (wrapper && wrapper.parentNode && wrapper.parentNode.id === 'game-details-play-button-container') {
-        return; // still intact — nothing to do
+        return;
       }
 
-      // Wrapper is gone or detached — Roblox replaced the container
       toggleReady = false;
       if (!_fastPoll) {
         console.log('[Flux] wrapper lost, starting fast recovery...');
         startFastPoll();
       }
-    }, 2000); // check every 2s — lightweight
+    }, 2000);
   }
 
   function tryInjectToggle() {
@@ -769,9 +704,8 @@
       injectOurButton(container);
     }
 
-    // Initial poll — wait for the button to appear (container exists but button hasn't rendered yet)
     var attempts = 0;
-    var MAX_ATTEMPTS = 75; // 15 seconds
+    var MAX_ATTEMPTS = 75;
     var poll = setInterval(function() {
       attempts++;
       var c = document.getElementById('game-details-play-button-container');
@@ -782,7 +716,7 @@
       injectOurButton(c);
       if (toggleReady) {
         clearInterval(poll);
-        startRecoveryPoll(); // switch to long-term recovery mode
+        startRecoveryPoll();
       } else if (attempts >= MAX_ATTEMPTS) {
         clearInterval(poll);
         console.log('[Flux] gave up waiting for play button after ' + MAX_ATTEMPTS + ' attempts');
@@ -790,10 +724,7 @@
     }, 200);
   }
 
-  // ── Game launch listener (from background.js) ─────────────────────
-  // Server resolution is now done directly in content.js — no Python backend needed.
 
-  // ── Fetch (extension-only — direct Roblox API calls) ──────────────
 
   function doFetch() {
     var p = pid(); if (!p) return;
@@ -813,9 +744,6 @@
     });
   }
 
-  // Lightweight refresh — fetch player counts only, skip IP resolution.
-  // Merges region data from lastGood by server ID. No gamejoin API calls = no 429s.
-  // Re-renders only the current region's server cards.
 
   var _refreshingCounts = false;
 
@@ -825,7 +753,6 @@
     _refreshingCounts = true;
 
     try {
-      // Fetch fresh server list (player counts + ping)
       var allServers = [];
       var cursor = null;
       var pageCount = 0;
@@ -848,7 +775,6 @@
 
       if (!allServers.length) { _refreshingCounts = false; return; }
 
-      // Merge region data from lastGood by server ID
       var oldById = {};
       lastGood.forEach(function(s) { if (s.id && isReal(s)) oldById[s.id] = s; });
       for (var j = 0; j < allServers.length; j++) {
@@ -867,7 +793,6 @@
       lastFetch = Date.now();
       filtered = applySort(allServers.filter(function(s) { return s.playing > 0 && s.playing < s.maxPlayers; }));
 
-      // Update only the server cards for the current region
       var right = document.getElementById("flux-right-panel");
       if (right && right._viewingRegion) {
         showRegionServers(right._viewingRegion);
@@ -878,7 +803,6 @@
     _refreshingCounts = false;
   }
 
-  // ── Overlay ─────────────────────────────────────────────────────────
 
   function openOverlay() {
     var old = document.querySelector(".flux-overlay");
@@ -911,7 +835,6 @@
     setTimeout(function() { if (overlay.parentNode) overlay.remove(); clearAuto(); }, 200);
   }
 
-  // ── Join specific server ─────────────────────────────────────────────
 
   function joinSpecificServer(placeId, serverId) {
     console.log("[Flux] launching server: " + serverId);
@@ -924,7 +847,6 @@
     }
   }
 
-  // ── Dashboard builder ────────────────────────────────────────────────
 
   function buildDashboard(overlay) {
     var body = overlay.querySelector(".flux-body");
@@ -933,28 +855,23 @@
     var dash = document.createElement("div");
     dash.className = "flux-dash";
 
-    // ── LEFT: Sidebar — always shows all regions ──────────────────────
     var left = document.createElement("div");
     left.className = "flux-dash-left";
     left.innerHTML = '<div class="flux-sidebar-header">Server Locations</div><div class="flux-side">' + dashSidebar() + '</div>';
     dash.appendChild(left);
 
-    // ── RIGHT: Default dashboard (server cards only on region click) ──
     var right = document.createElement("div");
     right.className = "flux-dash-right";
     right.id = "flux-right-panel";
 
-    // Header
     var hdr = document.createElement("div");
     hdr.className = "flux-main-header";
     hdr.innerHTML = '<h2 class="flux-main-title">Flux Dashboard</h2><button class="flux-close-pill flux-dash-close">Close</button>';
     right.appendChild(hdr);
 
-    // Default panel content
     var defaultPanel = document.createElement("div");
     defaultPanel.className = "flux-default-panel";
 
-    // Community section
     var secLabel = document.createElement("div");
     secLabel.className = "flux-section-label";
     secLabel.textContent = "COMMUNITY";
@@ -983,19 +900,16 @@
     return card;
   }
 
-  // ── Region server view — replaces right panel when a region is clicked ──
 
   function showRegionServers(regionKey) {
     var right = document.getElementById("flux-right-panel");
     if (!right) return;
     right.innerHTML = "";
 
-    // Parse region
     var parts = regionKey.split("|");
     var displayName = parts.slice(1).join("|");
     var flagUrl = getFlagUrl(displayName);
 
-    // Header with flag + back button + close
     var hdr = document.createElement("div");
     hdr.className = "flux-main-header";
 
@@ -1020,7 +934,6 @@
     hdr.appendChild(backBtn);
     right.appendChild(hdr);
 
-    // Filter servers
     var servers;
     if (regionKey === "UNKNOWN|__unmatched") {
       servers = lastGood;
@@ -1030,14 +943,12 @@
       });
     }
 
-    // Stats bar
     var statsBar = document.createElement("div");
     statsBar.className = "flux-stats-bar";
     var resolved = servers.filter(function(s) { return s.region && s.region !== "Pending" && s.region !== "Unknown"; }).length;
     statsBar.textContent = servers.length + " servers · " + resolved + " resolved · Updated " + timeAgo(lastFetch);
     right.appendChild(statsBar);
 
-    // Sort bar (RoRegion-style: ping, most players, least full)
     var sortBar = document.createElement("div");
     sortBar.className = "flux-sort-bar";
     var SORTS = [
@@ -1058,20 +969,17 @@
     }
     right.appendChild(sortBar);
 
-    // Server grid
     var serverGrid = document.createElement("div");
     serverGrid.className = "flux-server-grid";
     serverGrid.id = "flux-server-grid";
-    serverGrid._regionServers = servers;  // pass filtered servers
+    serverGrid._regionServers = servers;
     right.appendChild(serverGrid);
     renderServerGrid(serverGrid);
 
-    // Store for refresh
     right._viewingRegion = regionKey;
   }
 
   function rebuildRightPanel() {
-    // Rebuild right panel to default dashboard view
     var right = document.getElementById("flux-right-panel");
     if (!right) return;
     right.innerHTML = "";
@@ -1093,21 +1001,17 @@
     right.appendChild(defaultPanel);
     right._viewingRegion = null;
 
-    // Re-wire close button
     var closeBtn = right.querySelector(".flux-dash-close");
     if (closeBtn) {
       var overlay = document.querySelector(".flux-overlay");
       if (overlay) closeBtn.onclick = function() { closeOverlay(overlay); };
     }
 
-    // Refresh sidebar to clear selection highlight
     refreshSidebar();
   }
 
-  // ── Sidebar — always shows all known datacenter locations ──────────
 
   function dashSidebar() {
-    // Build server count lookup from live data
     var counts = {};
     var mappedTotal = 0;
     var knownNames = {};
@@ -1121,7 +1025,6 @@
 
     var unmatchedTotal = lastGood.length - mappedTotal;
 
-    // Build ordered list of all REGION_MAP entries grouped by continent
     var ORDER = ["EUROPE", "ASIA", "NORTH AMERICA", "OCEANIA", "SOUTH AMERICA"];
     var entries = [];
     for (var key in REGION_MAP) {
@@ -1134,7 +1037,6 @@
       return a.info.name.localeCompare(b.info.name);
     });
 
-    // Build HTML — grouped by continent
     var html = "";
     var lastGroup = "";
     for (var i = 0; i < entries.length; i++) {
@@ -1169,7 +1071,6 @@
       html += '</div>';
     }
 
-    // Fallback: unmatched servers (no region data from backend yet)
     if (unmatchedTotal > 0) {
       html += '<div class="flux-region-group">';
       html += '<div class="flux-region-group-label">UNKNOWN</div>';
@@ -1184,7 +1085,7 @@
       html += '</div>';
     }
 
-    html += '</div>';  // close last mapped group
+    html += '</div>';
     html += '<div class="flux-loader">' + lastGood.length + ' servers scanned</div>';
     return html;
   }
@@ -1192,12 +1093,10 @@
   async function renderServerGrid(container) {
     container.innerHTML = "";
 
-    // Get servers based on filter
     var servers;
     if (container._regionServers) {
       servers = container._regionServers;
     } else {
-      // Determine from selected region
       if (selectedRegion) {
         var parts = selectedRegion.split("|");
         var displayName = parts.slice(1).join("|");
@@ -1213,7 +1112,6 @@
       }
     }
 
-    // Filter and apply active sort mode
     servers = servers.filter(function(s) { return s.playing > 0 && s.playing < s.maxPlayers; });
     servers = applySort(servers);
 
@@ -1222,19 +1120,16 @@
       return;
     }
 
-    // Fetch thumbnails for first batch
     var batch = servers.slice(0, BATCH_SIZE);
     var allTokens = [];
     batch.forEach(function(s) { if (s.playerTokens) allTokens = allTokens.concat(s.playerTokens.slice(0, 5)); });
     var thumbs = await fetchThumbnails(allTokens);
 
-    // Render cards
     for (var i = 0; i < batch.length; i++) {
       container.appendChild(createServerCard(batch[i], thumbs));
     }
     var visibleCount = batch.length;
 
-    // Load More
     if (servers.length > BATCH_SIZE) {
       var serversRef = servers;
       var loadMore = document.createElement("button");
@@ -1270,7 +1165,6 @@
     var isFull = server.playing >= server.maxPlayers;
     var playerTokens = server.playerTokens || [];
 
-    // ── Player avatars row ────────────────────────────────────
     var avatarsRow = document.createElement("div");
     avatarsRow.className = "flux-avatars-row";
 
@@ -1295,7 +1189,6 @@
         img.alt = "";
         avatarsRow.appendChild(img);
       }
-      // "+N" for extra players beyond 5 shown tokens
       if (server.playing > maxThumbs && playerTokens.length >= maxThumbs) {
         var plus = document.createElement("div");
         plus.className = "flux-avatar-plus";
@@ -1303,7 +1196,6 @@
         avatarsRow.appendChild(plus);
       }
     } else {
-      // Tokens not available — show placeholder count
       var phCount = Math.min(server.playing, maxThumbs);
       for (var j = 0; j < phCount; j++) {
         var ph = document.createElement("img");
@@ -1321,13 +1213,11 @@
 
     card.appendChild(avatarsRow);
 
-    // ── Player count (RoRegion: 16px, bold) ───────────────────────
     var countText = document.createElement("div");
     countText.className = "flux-player-count";
     countText.textContent = server.playing + " / " + server.maxPlayers + " players";
     card.appendChild(countText);
 
-    // ── Ping (RoRegion: 15px, color-coded) ────────────────────────
     if (server.ping !== undefined && server.ping !== null && server.ping !== Infinity && !isNaN(server.ping)) {
       var pingRow = document.createElement("div");
       pingRow.className = "flux-ping-row";
@@ -1345,7 +1235,6 @@
       card.appendChild(pingUnknown);
     }
 
-    // ── Join button (RoRegion: 48px, #3975e0) ─────────────────────
     var joinBtn = document.createElement("button");
     joinBtn.className = "flux-join-btn";
     if (isFull) {
@@ -1371,30 +1260,25 @@
     return card;
   }
 
-  // ── Wire dashboard interactions ─────────────────────────────────────
 
   function wireSidebar(overlay) {
-    // Region row clicks — select/unselect
     overlay.querySelectorAll(".flux-loc-row").forEach(function(row) {
-      // Skip if already wired (has click handler from previous build)
       if (row.dataset.wired === "1") return;
       row.dataset.wired = "1";
       row.onclick = function(e) {
         if (e.target.closest(".flux-loc-action")) return;
         var key = row.dataset.regionKey;
         if (selectedRegion === key) {
-          // Deselect — go back to default dashboard
           selectedRegion = null;
           rebuildRightPanel();
         } else {
           selectedRegion = key;
           showRegionServers(key);
-          refreshSidebar(); // update highlight
+          refreshSidebar();
         }
       };
     });
 
-    // Play button — join random server via Roblox.GameLauncher
     overlay.querySelectorAll(".flux-loc-action").forEach(function(btn) {
       if (btn.dataset.wired === "1") return;
       btn.dataset.wired = "1";
@@ -1404,7 +1288,6 @@
         if (!row || row.dataset.hasServers !== "1") return;
         var key = row.dataset.regionKey;
 
-        // Pick matching servers
         var matching;
         if (key === "UNKNOWN|__unmatched") {
           matching = lastGood;
@@ -1433,48 +1316,40 @@
   }
 
   function wireDashboard(overlay) {
-    // Close pill
     var closePill = overlay.querySelector(".flux-dash-close");
     if (closePill) closePill.onclick = function() { closeOverlay(overlay); };
 
-    // Sidebar interactions
     wireSidebar(overlay);
   }
 
   function refreshSidebar() {
-    // Only update the sidebar rows — no full dashboard rebuild, no flicker
     var side = document.querySelector(".flux-side");
     if (!side) return;
     var wasScrolled = side.scrollTop;
     side.innerHTML = dashSidebar();
     side.scrollTop = wasScrolled;
-    // Re-wire click handlers on new rows
     var overlay = document.querySelector(".flux-overlay");
     if (overlay) wireSidebar(overlay);
   }
 
   function refreshUI() {
-    // Update sidebar (preserves scroll)
     refreshSidebar();
-    // If viewing a region, refresh its server cards
     var right = document.getElementById("flux-right-panel");
     if (right && right._viewingRegion) {
       showRegionServers(right._viewingRegion);
     }
   }
 
-  // ── Auto-refresh ────────────────────────────────────────────────────
 
   function startAuto() { clearAuto(); autoTimer = setInterval(function() { if (document.querySelector(".flux-overlay")) refreshPlayerCountsOnly(); }, 5000); }
   function clearAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
 
-  // ── Init ────────────────────────────────────────────────────────────
 
   async function init() {
     if (!isGamePage()) return;
-    tryInjectToggle();     // RoRegion-style — split native play button, add Flux dashboard button beside it
-    await loadRRIpTable(); // RoRegion CIDR table (cached 24h) — MUST load before resolution
-    if (pid()) doFetch();  // now safe — IP table is ready
+    tryInjectToggle();
+    await loadRRIpTable();
+    if (pid()) doFetch();
   }
 
   var domDone = false;
@@ -1482,12 +1357,11 @@
   function onDOM() {
     if (domDone) return; domDone = true;
     setTimeout(init, 800);
-    // SPA navigation watcher
     if (navObserver) navObserver.disconnect();
     navObserver = new MutationObserver(function() {
       if (location.href !== currentUrl) {
         currentUrl = location.href;
-        lastGood = []; filtered = []; selectedRegion = null; // discard old game's servers
+        lastGood = []; filtered = []; selectedRegion = null;
         var o = document.querySelector(".flux-overlay"); if (o) { closeOverlay(o); }
         clearAuto();
         domDone = false; toggleReady = false;
@@ -1499,10 +1373,6 @@
     navObserver.observe(document.documentElement, { childList: true, subtree: true });
   }
 
-  // Robust init — try multiple strategies to catch the DOM ready moment.
-  // document_start means body may not exist yet. MutationObserver on
-  // documentElement is fragile in some Chrome builds — use DOMContentLoaded
-  // as a reliable fallback.
   function boot() {
     if (domDone) return;
     try {
@@ -1513,13 +1383,11 @@
 
   if (boot()) { /* ready immediately */ }
   else {
-    // Strategy 1: MutationObserver — wait for <body> to be appended
     try {
       var _bootObs = new MutationObserver(function() {
         if (boot()) { _bootObs.disconnect(); }
       });
       _bootObs.observe(document.documentElement || document, { childList: true, subtree: true });
-      // Safety timeout — if MutationObserver never fires, try DOMContentLoaded
       setTimeout(function() {
         if (!domDone) {
           console.log('[Flux] MutationObserver timed out, falling back to DOMContentLoaded');
@@ -1529,7 +1397,6 @@
       }, 2000);
     } catch(e) {
       console.log('[Flux] observer setup failed:', e.message);
-      // Strategy 2: DOMContentLoaded as last resort
       document.addEventListener('DOMContentLoaded', function() { boot(); });
     }
   }

@@ -1,12 +1,5 @@
-// Flux — extension-only architecture
-// Server finding + IP resolution = content.js (direct Roblox API calls).
-// Background handles: game launch, config, identity.
-
 const API_BASE_DEFAULT = "https://n8n.srv875745.hstgr.cloud/webhook";
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Game launcher — injected into MAIN world for Roblox.GameLauncher access
-// ═══════════════════════════════════════════════════════════════════════
 
 function rrLaunchGameInstance(placeId, instanceId) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -32,23 +25,16 @@ function rrLaunchGameInstance(placeId, instanceId) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Storage helpers
-// ═══════════════════════════════════════════════════════════════════════
 
 async function getApiBase() {
   const storage = await chrome.storage.local.get(["fluxApiBase"]);
   return (storage.fluxApiBase || API_BASE_DEFAULT).replace(/\/+$/, "");
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Message router
-// ═══════════════════════════════════════════════════════════════════════
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !message.type) return;
 
-  // ── Config ──────────────────────────────────────────────────────────
 
   if (message.type === "flux.getConfig") {
     getApiBase()
@@ -73,7 +59,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // ── Identity ────────────────────────────────────────────────────────
 
   if (message.type === "flux.getIdentity") {
     (async () => {
@@ -115,9 +100,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // ── Server Finder (handled by content.js directly — no backend needed) ─
 
-  // ── Game Launch — injects into MAIN world for Roblox.GameLauncher ───
 
   if (message.type === "flux.launchGame") {
     if (!sender.tab || !sender.tab.id) {

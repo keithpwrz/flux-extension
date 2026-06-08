@@ -1,8 +1,3 @@
-// Flux extension — long-running monitor (3-5 min)
-// Usage: node test/flux-monitor.js [--game-id=2753915549]
-//
-// Opens headed Chromium with Flux extension loaded.
-// Keith logs in manually. Monitor then checks button health every 5s for 5 min.
 
 const { chromium } = require('playwright');
 const path = require('path');
@@ -14,7 +9,7 @@ const USER_DATA_DIR = path.join(__dirname, '..', '.playwright-monitor');
 const GAME_ID = (process.argv.find(a => a.startsWith('--game-id=')) || '--game-id=2753915549').split('=')[1];
 const GAME_URL = `https://www.roblox.com/games/${GAME_ID}/`;
 const MONITOR_MINUTES = 5;
-const CHECK_INTERVAL = 5000; // 5 seconds
+const CHECK_INTERVAL = 5000;
 
 function ts() { return new Date().toISOString().substring(11, 19); }
 
@@ -23,7 +18,6 @@ function ts() { return new Date().toISOString().substring(11, 19); }
   console.log(`   Extension: ${EXTENSION_PATH}`);
   console.log(`   Game:      ${GAME_URL}\n`);
 
-  // Remove old user data
   try { fs.rmSync(USER_DATA_DIR, { recursive: true, force: true }); } catch(e) {}
 
   const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
@@ -40,7 +34,6 @@ function ts() { return new Date().toISOString().substring(11, 19); }
 
   const page = await context.newPage();
 
-  // ── Collect Flux logs with timestamps ──────────────────────────────
   const fluxLogs = [];
   page.on('console', msg => {
     const text = msg.text();
@@ -51,14 +44,12 @@ function ts() { return new Date().toISOString().substring(11, 19); }
     }
   });
 
-  // ── Navigate ───────────────────────────────────────────────────────
   console.log(`[${ts()}] Navigating to ${GAME_URL}...`);
   await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {
     console.log(`[${ts()}] Page load timeout — continuing anyway...`);
   });
   console.log(`[${ts()}] Page loaded. Current URL: ${page.url()}`);
 
-  // ── Wait for login ─────────────────────────────────────────────────
   console.log(`\n[${ts()}] ═══ WAITING FOR LOGIN ═══`);
   console.log(`[${ts()}] Please log into Roblox in the browser window.`);
   console.log(`[${ts()}] Monitor will auto-detect game page and begin checks.\n`);
@@ -66,8 +57,7 @@ function ts() { return new Date().toISOString().substring(11, 19); }
   let onGamePage = false;
   let loggedIn = false;
 
-  // Poll for login detection
-  for (let i = 0; i < 120; i++) { // 10 min max wait for login
+  for (let i = 0; i < 120; i++) {
     await page.waitForTimeout(5000);
     const url = page.url();
     const isGamePage = url.includes('/games/') && !url.includes('/login');
@@ -77,7 +67,6 @@ function ts() { return new Date().toISOString().substring(11, 19); }
       console.log(`\n[${ts()}] ✅ DETECTED GAME PAGE: ${url.split('?')[0]}`);
     }
 
-    // Check if logged in (game page with play button container = logged in)
     const hasContainer = await page.$('#game-details-play-button-container');
     if (hasContainer && !loggedIn) {
       loggedIn = true;
@@ -94,7 +83,6 @@ function ts() { return new Date().toISOString().substring(11, 19); }
     console.log(`[${ts()}] ⚠️  Timed out waiting for login. Starting checks anyway.`);
   }
 
-  // ── Monitor loop ───────────────────────────────────────────────────
   console.log(`\n[${ts()}] ═══ MONITORING STARTED (${MONITOR_MINUTES} min) ═══\n`);
 
   const checks = [];
@@ -122,7 +110,6 @@ function ts() { return new Date().toISOString().substring(11, 19); }
         };
       });
 
-      // Detect state changes
       const stateKey = JSON.stringify({ w: state.fluxWrapper, b: state.fluxBtn, c: state.container, n: !!state.nativeBtn });
       if (stateKey !== lastState) {
         lastState = stateKey;
@@ -137,7 +124,6 @@ function ts() { return new Date().toISOString().substring(11, 19); }
         console.log(`[${ts()}] T+${elapsedSec}s | ${flags}`);
       }
 
-      // Check for disappearance
       if (state.container && !state.fluxWrapper && elapsed > 10) {
         console.log(`[${ts()}] ⚠️  WRAPPER DISAPPEARED at T+${elapsed}s! Recovery should kick in...`);
       }
@@ -153,12 +139,10 @@ function ts() { return new Date().toISOString().substring(11, 19); }
     await page.waitForTimeout(CHECK_INTERVAL);
   }
 
-  // ── Take final screenshot ───────────────────────────────────────────
   const screenshotPath = path.join(__dirname, '..', 'flux-monitor-final.png');
   await page.screenshot({ path: screenshotPath, fullPage: false });
   console.log(`\n[${ts()}] 📸 Final screenshot saved: ${screenshotPath}`);
 
-  // ── Summary ────────────────────────────────────────────────────────
   console.log(`\n[${ts()}] ═══ MONITORING COMPLETE ═══`);
 
   const disappearances = [];
@@ -193,8 +177,7 @@ function ts() { return new Date().toISOString().substring(11, 19); }
   console.log('\n   Browser will stay open. Press Ctrl+C to exit.');
   console.log('══════════════════════════════════════════════\n');
 
-  // Keep browser open for manual inspection
-  await new Promise(() => {}); // never resolves — user kills with Ctrl+C
+  await new Promise(() => {});
 })().catch(e => {
   console.error('FATAL:', e.message);
   process.exit(1);
