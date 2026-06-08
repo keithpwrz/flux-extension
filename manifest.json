@@ -1,7 +1,7 @@
 {
     "manifest_version":  3,
     "name":  "Flux",
-    "description":  "Find Roblox servers by region with subscription or gamepass access.",
+    "description":  "Find the best Roblox servers by region. See live player counts, ping ratings, and join in one click — free, no account needed.",
     "version":  "1.0.0",
     "icons": {
         "16": "icons/icon16.png",

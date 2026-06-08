@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flux Button Icon — Final Design</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d1117;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+    align-items: center;
+  }
+  h1 { font-size: 20px; color: #888; margin-bottom: 8px; }
+  h2 { font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+
+  .play-row {
+    display: flex; align-items: center; gap: 8px;
+    background: #191b22; padding: 16px 20px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .play-row-label {
+    font-size: 11px; color: #555; text-transform: uppercase;
+    letter-spacing: 0.1em; margin-right: 12px; flex-shrink: 0;
+  }
+
+  .flux-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; cursor: pointer; flex-shrink: 0;
+    color: white; border-radius: 6px;
+    transition: filter 0.15s ease;
+    font-family: inherit;
+  }
+  .flux-btn:hover { filter: brightness(1.12); }
+  .flux-btn:active { filter: brightness(0.88); }
+
+  .variants {
+    display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;
+  }
+  .variant-card {
+    background: #191b22; border-radius: 12px; padding: 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .variant-label {
+    font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .selected {
+    outline: 2px solid #10b981; outline-offset: 5px; border-radius: 2px;
+  }
+
+  .roblox-mock-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #0066ff; color: white; border: none; border-radius: 6px;
+    cursor: pointer; font-size: 14px; font-weight: 600;
+    padding: 0 24px; height: 48px;
+  }
+
+  /* Sharp F SVG — heavy 5px, no rounded corners, rotates below 25° */
+</style>
+</head>
+<body>
+
+<h1>Flux Dashboard Button — Final Selection</h1>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- Rotation angles: 8°, 14°, 20° — all below 25°                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Rotation (below 25°)</h2>
+<div class="variants">
+  <div class="variant-card">
+    <button class="flux-btn" style="width:60px; height:48px; background:#0050d8;">
+      <svg viewBox="0 0 24 24" width="30" height="30">
+        <g transform="rotate(8 12 12)">
+          <rect x="5" y="2" width="5" height="20" fill="currentColor"/>
+          <rect x="5" y="2" width="14" height="5" fill="currentColor"/>
+          <rect x="5" y="10" width="11" height="5" fill="currentColor"/>
+        </g>
+      </svg>
+    </button>
+    <span class="variant-label">8° — barely tilted</span>
+  </div>
+  <div class="variant-card">
+    <button class="flux-btn selected" style="width:60px; height:48px; background:#0050d8;">
+      <svg viewBox="0 0 24 24" width="30" height="30">
+        <g transform="rotate(14 12 12)">
+          <rect x="5" y="2" width="5" height="20" fill="currentColor"/>
+          <rect x="5" y="2" width="14" height="5" fill="currentColor"/>
+          <rect x="5" y="10" width="11" height="5" fill="currentColor"/>
+        </g>
+      </svg>
+    </button>
+    <span class="variant-label">14° — subtle lean ✦</span>
+  </div>
+  <div class="variant-card">
+    <button class="flux-btn" style="width:60px; height:48px; background:#0050d8;">
+      <svg viewBox="0 0 24 24" width="30" height="30">
+        <g transform="rotate(20 12 12)">
+          <rect x="5" y="2" width="5" height="20" fill="currentColor"/>
+          <rect x="5" y="2" width="14" height="5" fill="currentColor"/>
+          <rect x="5" y="10" width="11" height="5" fill="currentColor"/>
+        </g>
+      </svg>
+    </button>
+    <span class="variant-label">20° — moderate lean</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- Final mockup: Play row with the selected F                    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Play Row — Final Mockup (#0050d8 · 14° · Heavy Sharp · 30px)</h2>
+<div class="play-row">
+  <span class="play-row-label">Game Page</span>
+  <button class="roblox-mock-btn" style="width:210px; background:#0050d8;">
+    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20" style="margin-right:6px;">
+      <polygon points="5,3 21,12 5,21"/>
+    </svg>
+    Play
+  </button>
+  <button class="flux-btn" style="width:90px; height:48px; background:#0050d8;">
+    <svg viewBox="0 0 24 24" width="30" height="30">
+      <g transform="rotate(14 12 12)">
+        <rect x="5" y="2" width="5" height="20" fill="currentColor"/>
+        <rect x="5" y="2" width="14" height="5" fill="currentColor"/>
+        <rect x="5" y="10" width="11" height="5" fill="currentColor"/>
+      </g>
+    </svg>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- Zoomed in: the F at different sizes                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Final F — Large View</h2>
+<div class="variants">
+  <div class="variant-card">
+    <div style="width:120px; height:80px; background:#0050d8; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+      <svg viewBox="0 0 24 24" width="44" height="44">
+        <g transform="rotate(14 12 12)">
+          <rect x="5" y="2" width="5" height="20" fill="white"/>
+          <rect x="5" y="2" width="14" height="5" fill="white"/>
+          <rect x="5" y="10" width="11" height="5" fill="white"/>
+        </g>
+      </svg>
+    </div>
+    <span class="variant-label">44px — blown up to inspect</span>
+  </div>
+  <div class="variant-card">
+    <div style="width:90px; height:48px; background:#0050d8; border-radius:6px; display:flex; align-items:center; justify-content:center;">
+      <svg viewBox="0 0 24 24" width="30" height="30">
+        <g transform="rotate(14 12 12)">
+          <rect x="5" y="2" width="5" height="20" fill="white"/>
+          <rect x="5" y="2" width="14" height="5" fill="white"/>
+          <rect x="5" y="10" width="11" height="5" fill="white"/>
+        </g>
+      </svg>
+    </div>
+    <span class="variant-label">30px — actual button size</span>
+  </div>
+  <div class="variant-card">
+    <div style="width:60px; height:40px; background:#0050d8; border-radius:5px; display:flex; align-items:center; justify-content:center;">
+      <svg viewBox="0 0 24 24" width="22" height="22">
+        <g transform="rotate(14 12 12)">
+          <rect x="5" y="2" width="5" height="20" fill="white"/>
+          <rect x="5" y="2" width="14" height="5" fill="white"/>
+          <rect x="5" y="10" width="11" height="5" fill="white"/>
+        </g>
+      </svg>
+    </div>
+    <span class="variant-label">22px — minimum readable</span>
+  </div>
+</div>
+
+</body>
+</html>
